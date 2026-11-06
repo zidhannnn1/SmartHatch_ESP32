@@ -1,0 +1,36 @@
+CompileFlags:
+  Add:
+    - "--target=arm-none-eabi"
+    - "-Wno-unknown-warning-option"
+    - "-Wno-unknown-attributes"
+    - "-Wno-ignored-attributes"
+    - "-D__XTENSA__"
+    - "-I/Users/mac/smt7/capstone/SmartHatch_ESP32/include"
+    - "-I/Users/mac/smt7/capstone/SmartHatch_ESP32/src"
+    - "-I/Users/mac/smt7/capstone/SmartHatch_ESP32/.pio/libdeps/esp32dev/Firebase ESP32 Client/src"
+    - "-I/Users/mac/smt7/capstone/SmartHatch_ESP32/.pio/libdeps/esp32dev/ESPAsyncWebServer/src"
+    - "-I/Users/mac/smt7/capstone/SmartHatch_ESP32/.pio/libdeps/esp32dev/ArduinoJson/src"
+    - "-I/Users/mac/smt7/capstone/SmartHatch_ESP32/.pio/libdeps/esp32dev/Blynk/src"
+    - "-isystem"
+    - "/Users/mac/.platformio/packages/toolchain-xtensa-esp32/xtensa-esp32-elf/include/c++/8.4.0"
+    - "-isystem"
+    - "/Users/mac/.platformio/packages/toolchain-xtensa-esp32/xtensa-esp32-elf/include/c++/8.4.0/xtensa-esp32-elf"
+    - "-isystem"
+    - "/Users/mac/.platformio/packages/toolchain-xtensa-esp32/lib/gcc/xtensa-esp32-elf/8.4.0/include"
+    - "-isystem"
+    - "/Users/mac/.platformio/packages/toolchain-xtensa-esp32/xtensa-esp32-elf/include"
+  Remove:
+    - "-mlongcalls"
+    - "-fstrict-volatile-bitfields"
+    - "-fno-tree-switch-conversion"
+    - "-fno-jump-tables"
+    - "-freorder-blocks"
+    - "-Wno-frame-address"
+    - "-MMD"
+    - "--driver-mode=g++"
+
+Diagnostics:
+  Suppress:
+    - "drv_unknown_argument"
+    - "drv_unknown_argument_with_suggestion"
+    - "attribute_section_invalid_for_target"

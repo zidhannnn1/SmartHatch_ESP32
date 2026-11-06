@@ -1,0 +1,17 @@
+# PlatformIO
+.pio/
+compile_commands.json
+
+# VS Code & IDE
+.vscode/
+.cache/
+
+# Node / JS
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store

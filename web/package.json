@@ -1,0 +1,9 @@
+{
+  "name": "smarthatch-cloud-dashboard",
+  "version": "1.0.0",
+  "description": "SmartHatch ESP32 IoT Cloud Dashboard deployed to Vercel via Firebase",
+  "scripts": {
+    "start": "npx serve ."
+  }
+}
+

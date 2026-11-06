@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartHatch-ESP32 Dashboard</title>
+  <style>
+    :root {
+      --bg: #faf7f2;
+      --card: #ffffff;
+      --card-border: #e7e0d6;
+      --text: #1c1917;
+      --text-muted: #78716c;
+      --text-light: #a8a29e;
+      --amber-500: #f59e0b;
+      --amber-600: #d97706;
+      --amber-100: #fef3c7;
+      --emerald-500: #10b981;
+      --emerald-600: #059669;
+      --emerald-100: #d1fae5;
+      --red-500: #ef4444;
+      --red-600: #dc2626;
+      --red-100: #fee2e2;
+      --blue-500: #3b82f6;
+      --blue-100: #dbeafe;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(28,25,23,0.06), 0 1px 2px rgba(28,25,23,0.04);
+      --shadow-md: 0 4px 12px rgba(28,25,23,0.08);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--amber-600);
+      letter-spacing: -0.3px;
+    }
+
+    .logo span { color: var(--text); font-weight: 400; }
+
+    .conn-badge {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .conn-badge::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .conn-online { background: var(--emerald-100); color: var(--emerald-600); }
+    .conn-online::before { background: var(--emerald-500); }
+    .conn-offline { background: var(--red-100); color: var(--red-600); }
+    .conn-offline::before { background: var(--red-500); }
+    .conn-demo { background: var(--blue-100); color: var(--blue-500); }
+    .conn-demo::before { background: var(--blue-500); }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .safe-mode-banner {
+      background: var(--red-100);
+      border: 1px solid var(--red-500);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .safe-mode-banner.visible { display: flex; }
+
+    .safe-mode-banner .icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .safe-mode-banner .text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--red-600);
+    }
+
+    .safe-mode-banner .reason {
+      font-weight: 400;
+      color: var(--red-500);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 12px 16px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .card-body { padding: 12px 16px 16px; }
+
+    /* Gauge grid */
+    .gauges {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .gauge-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px 12px 12px;
+      text-align: center;
+      position: relative;
+    }
+
+    .gauge-canvas-wrap {
+      width: 120px;
+      height: 80px;
+      margin: 0 auto 4px;
+    }
+
+    .gauge-canvas-wrap canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .gauge-value {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .gauge-unit {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    .gauge-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .gauge-setpoint {
+      font-size: 11px;
+      color: var(--text-light);
+      margin-top: 2px;
+    }
+
+    .gauge-card.temp .gauge-value { color: var(--amber-600); }
+    .gauge-card.humid .gauge-value { color: var(--blue-500); }
+    .gauge-card.duty .gauge-value { color: var(--emerald-600); }
+
+    /* Duty cycle as full-width card */
+    .duty-card {
+      grid-column: 1 / -1;
+    }
+
+    .duty-bar-wrap {
+      height: 28px;
+      background: #f0ebe3;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .duty-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--emerald-500), var(--amber-500));
+      border-radius: 6px;
+      transition: width 0.5s ease;
+      min-width: 2px;
+    }
+
+    .duty-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .duty-header .gauge-value { font-size: 24px; }
+
+    /* Sensor detail */
+    .sensor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .sensor-item {
+      padding: 10px;
+      background: var(--bg);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sensor-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .sensor-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .sensor-dot.ok { background: var(--emerald-500); }
+    .sensor-dot.err { background: var(--red-500); }
+
+    .sensor-val {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .sensor-sub {
+      font-size: 12px;
+      color: var(--text-light);
+    }
+
+    /* Actuator status */
+    .actuator-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .actuator-pill {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid transparent;
+      flex: 1;
+      text-align: center;
+      min-width: 90px;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .actuator-pill.on {
+      background: var(--emerald-100);
+      color: var(--emerald-600);
+      border-color: var(--emerald-500);
+    }
+
+    .actuator-pill.off {
+      background: var(--bg);
+      color: var(--text-light);
+      border-color: var(--card-border);
+    }
+
+    /* Chart */
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 220px;
+    }
+
+    .chart-wrap canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .chart-legend {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chart-legend-item {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .chart-legend-item .swatch {
+      width: 12px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    /* Controls */
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+    }
+
+    .control-row + .control-row {
+      border-top: 1px solid var(--card-border);
+    }
+
+    .control-label {
+      font-size: 14px;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .control-label small {
+      display: block;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-light);
+    }
+
+    .control-input {
+      width: 80px;
+      padding: 7px 10px;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 600;
+      text-align: center;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .control-input:focus {
+      border-color: var(--amber-500);
+      box-shadow: 0 0 0 2px var(--amber-100);
+    }
+
+    .btn {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:focus-visible { outline: 2px solid var(--amber-500); outline-offset: 2px; }
+
+    .btn-primary {
+      background: var(--amber-600);
+      color: #fff;
+    }
+
+    .btn-primary:hover { opacity: 0.9; }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+    }
+
+    .btn-outline:hover { background: var(--bg); }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--text);
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* PID info */
+    .pid-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      text-align: center;
+    }
+
+    .pid-item {
+      padding: 8px;
+      background: var(--bg);
+      border-radius: 6px;
+    }
+
+    .pid-label {
+      font-size: 11px;
+      color: var(--text-light);
+      font-weight: 500;
+    }
+
+    .pid-val {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+
+    .info-row + .info-row { border-top: 1px solid #f0ebe3; }
+    .info-key { color: var(--text-muted); }
+    .info-val { font-weight: 600; }
+
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 200;
+      transition: opacity 0.4s;
+    }
+
+    .loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--card-border);
+      border-top-color: var(--amber-500);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px 16px;
+      font-size: 12px;
+      color: var(--text-light);
+    }
+
+    @media (min-width: 640px) {
+      main { padding: 24px; gap: 20px; }
+
+      .gauges {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+
+      .duty-card { grid-column: auto; }
+
+      .gauge-canvas-wrap { width: 140px; height: 90px; }
+      .gauge-value { font-size: 32px; }
+
+      .chart-wrap { height: 280px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Menghubungkan ke SmartHatch...</div>
+  </div>
+
+  <header>
+    <div class="header-inner">
+      <div class="logo">SmartHatch <span>ESP32</span></div>
+      <div class="conn-badge conn-offline" id="connBadge">Offline</div>
+    </div>
+  </header>
+
+  <main>
+    <div class="safe-mode-banner" id="safeBanner">
+      <div class="icon">&#9888;</div>
+      <div>
+        <div class="text">SAFE MODE AKTIF</div>
+        <div class="reason" id="safeReason"></div>
+      </div>
+    </div>
+
+    <div class="gauges">
+      <div class="gauge-card temp">
+        <div class="gauge-canvas-wrap"><canvas id="gaugeTemp"></canvas></div>
+        <div class="gauge-value" id="valTemp">--</div>
+        <div class="gauge-label">Suhu Rata-rata</div>
+        <div class="gauge-setpoint" id="spTemp">SP: --</div>
+      </div>
+
+      <div class="gauge-card humid">
+        <div class="gauge-canvas-wrap"><canvas id="gaugeHumid"></canvas></div>
+        <div class="gauge-value" id="valHumid">--</div>
+        <div class="gauge-label">Kelembapan</div>
+        <div class="gauge-setpoint" id="spHumid">SP: --</div>
+      </div>
+
+      <div class="gauge-card duty duty-card">
+        <div class="duty-header">
+          <div>
+            <div class="gauge-label">Duty Cycle Pemanas</div>
+            <div class="gauge-value" id="valDuty">--%</div>
+          </div>
+        </div>
+        <div class="duty-bar-wrap">
+          <div class="duty-bar" id="dutyBar" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Status Aktuator</div>
+      <div class="card-body">
+        <div class="actuator-row">
+          <div class="actuator-pill off" id="actHeater">Pemanas: OFF</div>
+          <div class="actuator-pill off" id="actFan1">Kipas 1: OFF</div>
+          <div class="actuator-pill off" id="actFan2">Kipas 2: OFF</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Detail Sensor</div>
+      <div class="card-body">
+        <div class="sensor-grid">
+          <div class="sensor-item">
+            <div class="sensor-name"><span class="sensor-dot ok" id="s1dot"></span> DHT22 #1</div>
+            <div class="sensor-val" id="s1temp">--°C</div>
+            <div class="sensor-sub" id="s1humid">-- %RH</div>
+          </div>
+          <div class="sensor-item">
+            <div class="sensor-name"><span class="sensor-dot ok" id="s2dot"></span> DHT22 #2</div>
+            <div class="sensor-val" id="s2temp">--°C</div>
+            <div class="sensor-sub" id="s2humid">-- %RH</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Grafik Riwayat</div>
+      <div class="card-body">
+        <div class="chart-wrap"><canvas id="chartCanvas"></canvas></div>
+        <div class="chart-legend">
+          <div class="chart-legend-item"><span class="swatch" style="background:#d97706"></span> Suhu (°C)</div>
+          <div class="chart-legend-item"><span class="swatch" style="background:#3b82f6"></span> Kelembapan (%)</div>
+          <div class="chart-legend-item"><span class="swatch" style="background:#10b981"></span> Duty (%)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Pengaturan Setpoint</div>
+      <div class="card-body">
+        <div class="control-row">
+          <div class="control-label">
+            Suhu
+            <small>Rentang 35 &ndash; 40°C</small>
+          </div>
+          <input type="number" class="control-input" id="inputTemp" min="35" max="40" step="0.5" value="37.5">
+          <span class="gauge-unit">°C</span>
+        </div>
+        <div class="control-row">
+          <div class="control-label">
+            Kelembapan
+            <small>Rentang 50 &ndash; 70%</small>
+          </div>
+          <input type="number" class="control-input" id="inputHumid" min="50" max="70" step="1" value="60">
+          <span class="gauge-unit">%</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btnSave" onclick="saveSetpoint()">Simpan</button>
+          <button class="btn btn-outline" id="btnReset" onclick="resetSystem()">Reset Default</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Parameter Kontrol PID</div>
+      <div class="card-body">
+        <div class="pid-grid">
+          <div class="pid-item">
+            <div class="pid-label">Kp</div>
+            <div class="pid-val" id="pidKp">--</div>
+          </div>
+          <div class="pid-item">
+            <div class="pid-label">Ki</div>
+            <div class="pid-val" id="pidKi">--</div>
+          </div>
+          <div class="pid-item">
+            <div class="pid-label">Kd</div>
+            <div class="pid-val" id="pidKd">--</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Informasi Sistem</div>
+      <div class="card-body">
+        <div class="info-row"><span class="info-key">Error Suhu</span><span class="info-val" id="infoError">--</span></div>
+        <div class="info-row"><span class="info-key">Laju Error</span><span class="info-val" id="infoRate">--</span></div>
+        <div class="info-row"><span class="info-key">Koreksi Fuzzy</span><span class="info-val" id="infoFuzzy">--</span></div>
+        <div class="info-row"><span class="info-key">Uptime</span><span class="info-val" id="infoUptime">--</span></div>
+      </div>
+    </div>
+  </main>
+
+  <footer>SmartHatch-ESP32 &middot; Capstone Design</footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (() => {
+    // Deteksi mode: jika dibuka via file:// atau ?demo=1, jalankan demo offline
+    const urlParams = new URLSearchParams(window.location.search);
+    const IS_DEMO = location.protocol === 'file:' || urlParams.get('demo') === '1';
+
+    let historyData = { temp: [], humid: [], duty: [] };
+    let connected = false;
+    let gaugeAnimFrame = null;
+
+    // Demo state untuk simulasi
+    const demo = {
+      temp: 36.0, humid: 55.0, duty: 0.8,
+      sp_temp: 37.5, sp_humid: 60.0,
+      tick: 0
+    };
+
+    function generateDemoData() {
+      demo.tick++;
+      // Simulasi cold start lalu stabilisasi
+      const phase = Math.min(demo.tick / 60, 1);
+      const noise = (Math.random() - 0.5) * 0.3;
+      demo.temp = 25 + phase * 12.5 + noise;
+      if (demo.temp > 38) demo.temp = 37.5 + noise * 0.5;
+      demo.humid = 45 + phase * 18 + (Math.random() - 0.5) * 2;
+      if (demo.humid > 72) demo.humid = 60 + (Math.random() - 0.5) * 3;
+      demo.duty = Math.max(0, Math.min(100, (1 - phase * 0.7) * 100 + noise * 10));
+
+      const e = demo.sp_temp - demo.temp;
+      return {
+        temp1: demo.temp + 0.1, humid1: demo.humid - 1,
+        temp2: demo.temp - 0.1, humid2: demo.humid + 1,
+        tempAvg: demo.temp, humidAvg: demo.humid,
+        sensor1Ok: true, sensor2Ok: true,
+        tempSetpoint: demo.sp_temp, humidSetpoint: demo.sp_humid,
+        dutyCycle: demo.duty,
+        error: parseFloat(e.toFixed(2)),
+        errorRate: parseFloat(((Math.random() - 0.5) * 0.1).toFixed(3)),
+        fuzzyDelta: parseFloat(((Math.random() - 0.3) * 0.2).toFixed(3)),
+        kp: parseFloat((8 + e * 0.5).toFixed(2)),
+        ki: 0.30, kd: parseFloat((2 + Math.abs(e) * 0.3).toFixed(2)),
+        heaterOn: demo.duty > 5,
+        fan1On: demo.humid > 50,
+        fan2On: demo.humid > 70,
+        safeMode: false, safetyReason: '',
+        uptimeSeconds: demo.tick * 2
+      };
+    }
+
+    async function fetchData() {
+      try {
+        if (IS_DEMO) {
+          return generateDemoData();
+        }
+        const r = await fetch('/api/data');
+        if (!r.ok) throw new Error(r.status);
+        return await r.json();
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function fetchHistory() {
+      try {
+        if (IS_DEMO) return null;
+        const r = await fetch('/api/history');
+        if (!r.ok) return null;
+        return await r.json();
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function $(id) { return document.getElementById(id); }
+
+    function showToast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function formatUptime(sec) {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      if (h > 0) return h + 'j ' + m + 'm ' + s + 'd';
+      if (m > 0) return m + 'm ' + s + 'd';
+      return s + ' detik';
+    }
+
+    // Arc gauge drawing
+    function drawGauge(canvasId, value, min, max, color, unit) {
+      const canvas = $(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const w = rect.width;
+      const h = rect.height;
+      const cx = w / 2;
+      const cy = h - 8;
+      const r = Math.min(cx - 6, cy - 6);
+      const lw = 8;
+      const startAngle = Math.PI;
+      const endAngle = 2 * Math.PI;
+
+      // Background arc
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.strokeStyle = '#e7e0d6';
+      ctx.lineWidth = lw;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Value arc
+      const pct = Math.max(0, Math.min(1, (value - min) / (max - min)));
+      const valAngle = startAngle + pct * Math.PI;
+      if (pct > 0.005) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, startAngle, valAngle);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lw;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+    }
+
+    // Line chart drawing
+    function drawChart() {
+      const canvas = $('chartCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const w = rect.width;
+      const h = rect.height;
+      const padL = 40, padR = 40, padT = 10, padB = 24;
+      const cw = w - padL - padR;
+      const ch = h - padT - padB;
+
+      ctx.clearRect(0, 0, w, h);
+
+      const tData = historyData.temp;
+      const hData = historyData.humid;
+      const dData = historyData.duty;
+      const len = tData.length;
+      if (len < 2) {
+        ctx.fillStyle = '#a8a29e';
+        ctx.font = '13px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('Menunggu data...', w / 2, h / 2);
+        return;
+      }
+
+      // Ranges
+      const tMin = 25, tMax = 42;
+      const hMin = 30, hMax = 90;
+      const dMin = 0,  dMax = 100;
+
+      // Grid lines (horizontal)
+      ctx.strokeStyle = '#f0ebe3';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = padT + (ch / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(w - padR, y);
+        ctx.stroke();
+      }
+
+      // Y-axis labels left (temp)
+      ctx.fillStyle = '#d97706';
+      ctx.font = '10px system-ui';
+      ctx.textAlign = 'right';
+      for (let i = 0; i <= 4; i++) {
+        const y = padT + (ch / 4) * i;
+        const v = tMax - (tMax - tMin) / 4 * i;
+        ctx.fillText(v.toFixed(0) + '°', padL - 4, y + 3);
+      }
+
+      // Y-axis labels right (humid / duty)
+      ctx.fillStyle = '#3b82f6';
+      ctx.textAlign = 'left';
+      for (let i = 0; i <= 4; i++) {
+        const y = padT + (ch / 4) * i;
+        const v = hMax - (hMax - hMin) / 4 * i;
+        ctx.fillText(v.toFixed(0) + '%', w - padR + 4, y + 3);
+      }
+
+      function mapY(val, vmin, vmax) {
+        return padT + ch - ((val - vmin) / (vmax - vmin)) * ch;
+      }
+
+      function drawLine(data, vmin, vmax, color, lineW) {
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineW;
+        ctx.lineJoin = 'round';
+        for (let i = 0; i < len; i++) {
+          const x = padL + (i / (len - 1)) * cw;
+          const y = mapY(data[i], vmin, vmax);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      // Setpoint reference lines
+      if (historyData.spTemp) {
+        const ysp = mapY(historyData.spTemp, tMin, tMax);
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = '#d9770640';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padL, ysp);
+        ctx.lineTo(w - padR, ysp);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      drawLine(dData, dMin, dMax, '#10b98180', 1.5);
+      drawLine(hData, hMin, hMax, '#3b82f6', 2);
+      drawLine(tData, tMin, tMax, '#d97706', 2.5);
+    }
+
+    function updateUI(d) {
+      if (!d) {
+        if (connected) {
+          connected = false;
+          $('connBadge').className = 'conn-badge conn-offline';
+          $('connBadge').textContent = 'Offline';
+        }
+        return;
+      }
+
+      connected = true;
+      $('connBadge').className = IS_DEMO ? 'conn-badge conn-demo' : 'conn-badge conn-online';
+      $('connBadge').textContent = IS_DEMO ? 'Demo' : 'Online';
+      $('loadingOverlay').classList.add('hidden');
+
+      // Safe mode banner
+      if (d.safeMode) {
+        $('safeBanner').classList.add('visible');
+        $('safeReason').textContent = d.safetyReason || 'Penyebab tidak diketahui';
+      } else {
+        $('safeBanner').classList.remove('visible');
+      }
+
+      // Gauges
+      const tVal = typeof d.tempAvg === 'number' ? d.tempAvg.toFixed(1) : '--';
+      const hVal = typeof d.humidAvg === 'number' ? d.humidAvg.toFixed(1) : '--';
+      const dutyVal = typeof d.dutyCycle === 'number' ? d.dutyCycle.toFixed(1) : '--';
+
+      $('valTemp').textContent = tVal + '°C';
+      $('valHumid').textContent = hVal + '%';
+      $('valDuty').textContent = dutyVal + '%';
+      $('spTemp').textContent = 'SP: ' + d.tempSetpoint + '°C';
+      $('spHumid').textContent = 'SP: ' + d.humidSetpoint + '%';
+
+      drawGauge('gaugeTemp', d.tempAvg || 0, 25, 42, '#d97706', '°C');
+      drawGauge('gaugeHumid', d.humidAvg || 0, 30, 90, '#3b82f6', '%');
+
+      // Duty bar
+      $('dutyBar').style.width = Math.max(0, Math.min(100, d.dutyCycle || 0)) + '%';
+
+      // Actuators
+      setActuator('actHeater', 'Pemanas', d.heaterOn);
+      setActuator('actFan1', 'Kipas 1', d.fan1On);
+      setActuator('actFan2', 'Kipas 2', d.fan2On);
+
+      // Sensor details
+      $('s1temp').textContent = d.temp1?.toFixed(1) + '°C';
+      $('s1humid').textContent = d.humid1?.toFixed(1) + ' %RH';
+      $('s2temp').textContent = d.temp2?.toFixed(1) + '°C';
+      $('s2humid').textContent = d.humid2?.toFixed(1) + ' %RH';
+      $('s1dot').className = 'sensor-dot ' + (d.sensor1Ok ? 'ok' : 'err');
+      $('s2dot').className = 'sensor-dot ' + (d.sensor2Ok ? 'ok' : 'err');
+
+      // PID
+      $('pidKp').textContent = d.kp?.toFixed(2) ?? '--';
+      $('pidKi').textContent = d.ki?.toFixed(2) ?? '--';
+      $('pidKd').textContent = d.kd?.toFixed(2) ?? '--';
+
+      // Info
+      $('infoError').textContent = (d.error >= 0 ? '+' : '') + d.error?.toFixed(2) + '°C';
+      $('infoRate').textContent = d.errorRate?.toFixed(3) + '°C/s';
+      $('infoFuzzy').textContent = (d.fuzzyDelta >= 0 ? '+' : '') + d.fuzzyDelta?.toFixed(3);
+      $('infoUptime').textContent = formatUptime(d.uptimeSeconds || 0);
+
+      // Update setpoint inputs to match current values
+      if (document.activeElement !== $('inputTemp')) {
+        $('inputTemp').value = d.tempSetpoint;
+      }
+      if (document.activeElement !== $('inputHumid')) {
+        $('inputHumid').value = d.humidSetpoint;
+      }
+
+      // Append to local history
+      historyData.temp.push(d.tempAvg || 0);
+      historyData.humid.push(d.humidAvg || 0);
+      historyData.duty.push(d.dutyCycle || 0);
+      historyData.spTemp = d.tempSetpoint;
+      if (historyData.temp.length > 120) {
+        historyData.temp.shift();
+        historyData.humid.shift();
+        historyData.duty.shift();
+      }
+
+      drawChart();
+    }
+
+    function setActuator(id, label, on) {
+      const el = $(id);
+      el.className = 'actuator-pill ' + (on ? 'on' : 'off');
+      el.textContent = label + ': ' + (on ? 'ON' : 'OFF');
+    }
+
+    async function saveSetpoint() {
+      const temp = parseFloat($('inputTemp').value);
+      const humid = parseFloat($('inputHumid').value);
+
+      if (isNaN(temp) || temp < 35 || temp > 40) {
+        showToast('Suhu harus antara 35 - 40°C');
+        return;
+      }
+      if (isNaN(humid) || humid < 50 || humid > 70) {
+        showToast('Kelembapan harus antara 50 - 70%');
+        return;
+      }
+
+      if (IS_DEMO) {
+        demo.sp_temp = temp;
+        demo.sp_humid = humid;
+        showToast('Setpoint disimpan (demo)');
+        return;
+      }
+
+      try {
+        const r = await fetch('/api/setpoint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ temp, humid })
+        });
+        if (r.ok) {
+          showToast('Setpoint disimpan');
+        } else {
+          const err = await r.json();
+          showToast('Gagal: ' + (err.error || 'Unknown'));
+        }
+      } catch (e) {
+        showToast('Koneksi gagal');
+      }
+    }
+
+    async function resetSystem() {
+      if (IS_DEMO) {
+        demo.sp_temp = 37.5;
+        demo.sp_humid = 60;
+        demo.tick = 0;
+        historyData = { temp: [], humid: [], duty: [] };
+        showToast('Sistem direset (demo)');
+        return;
+      }
+
+      try {
+        const r = await fetch('/api/reset', { method: 'POST' });
+        if (r.ok) {
+          showToast('Sistem direset');
+          historyData = { temp: [], humid: [], duty: [] };
+        } else {
+          showToast('Gagal mereset');
+        }
+      } catch (e) {
+        showToast('Koneksi gagal');
+      }
+    }
+
+    // Resize handler for gauges and chart
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        drawChart();
+      }, 150);
+    });
+
+    // Main poll loop
+    async function poll() {
+      const d = await fetchData();
+      updateUI(d);
+    }
+
+    // Init
+    (async function init() {
+      // First fetch: also try to load history from ESP32
+      const d = await fetchData();
+      updateUI(d);
+
+      if (!IS_DEMO) {
+        const hist = await fetchHistory();
+        if (hist && hist.temp) {
+          historyData.temp = hist.temp;
+          historyData.humid = hist.humid;
+          historyData.duty = hist.duty;
+          drawChart();
+        }
+      }
+
+      setInterval(poll, 2000);
+    })();
+
+    // Expose handlers untuk tombol HTML onclick
+    window.saveSetpoint = saveSetpoint;
+    window.resetSystem = resetSystem;
+    })();
+  </script>
+</body>
+</html>
