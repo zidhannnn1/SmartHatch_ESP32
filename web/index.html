@@ -877,12 +877,18 @@
           firebase.initializeApp(firebaseConfig);
           db = firebase.database();
 
+          // Sembunyikan loading overlay maksimal dalam 2.5 detik agar halaman tidak macet
+          setTimeout(() => {
+            $('loadingOverlay').classList.add('hidden');
+          }, 2500);
+
           // Monitor koneksi Cloud
           db.ref('.info/connected').on('value', (snap) => {
             connected = snap.val() === true;
             if (connected) {
               $('connBadge').className = 'conn-badge conn-online';
               $('connBadge').textContent = 'Cloud Online';
+              $('loadingOverlay').classList.add('hidden');
             } else {
               $('connBadge').className = 'conn-badge conn-offline';
               $('connBadge').textContent = 'Offline';
@@ -891,10 +897,19 @@
 
           // Listener telemetri real-time dari ESP32
           db.ref('smarthatch/telemetry').on('value', (snapshot) => {
+            $('loadingOverlay').classList.add('hidden');
             const val = snapshot.val();
             if (val) {
               updateUI(val);
+            } else {
+              // Jika database masih kosong karena ESP32 belum dinyalakan/diupload
+              $('connBadge').className = 'conn-badge conn-online';
+              $('connBadge').textContent = 'Menunggu ESP32...';
             }
+          }, (err) => {
+            console.error('Firebase read error:', err);
+            $('loadingOverlay').classList.add('hidden');
+            showToast('Firebase Error: ' + err.message);
           });
         }
       } catch (e) {
